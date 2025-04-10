@@ -18,8 +18,9 @@
     <button 
       @click="computeResult" 
       class="mb-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      :disabled="isLoading"
     >
-      Compute
+      {{ isLoading ? 'Computing...' : 'Compute' }}
     </button>
     
     <div class="p-4 border rounded-md bg-gray-50 mb-4">
@@ -28,24 +29,31 @@
     
     <div v-if="computedResult !== null" class="p-4 border rounded-md bg-green-50">
       <p>Computed result: <strong>{{ computedResult }}</strong></p>
-      <p class="text-sm text-gray-600 mt-2">Formula: (value² + 10)</p>
+      <p class="text-sm text-gray-600 mt-2">This is the discrepancy stopping time.</p>
     </div>
     
     <div v-if="error" class="p-4 border rounded-md bg-red-50 mt-4">
       <p class="text-red-600">{{ error }}</p>
     </div>
+
+    <!-- Residuals Chart Component -->
+    <ResidualsChart :residuals="residuals" v-if="residuals.length > 0" />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
+import ResidualsChart from './components/ResidualsChart.vue';
 
 const sliderValue = ref(0.05);
 const computedResult = ref(null);
 const error = ref(null);
+const residuals = ref([]);
+const isLoading = ref(false);
 
 async function computeResult() {
   try {
+    isLoading.value = true;
     error.value = null;
     const response = await fetch('http://localhost:8000/compute', {
       method: 'POST',
@@ -61,16 +69,19 @@ async function computeResult() {
     
     const data = await response.json();
     computedResult.value = data.computed;
+    residuals.value = data.residuals || [];
   } catch (err) {
     error.value = `Failed to compute: ${err.message}`;
     console.error(err);
+  } finally {
+    isLoading.value = false;
   }
 }
 </script>
 
 <style>
 .container {
-  max-width: 600px;
+  max-width: 800px;
 }
 
 input[type="range"] {

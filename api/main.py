@@ -28,12 +28,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class SliderData(BaseModel):
     value: float
+
 
 @app.get("/")
 def read_root():
     return {"message": "FastAPI server is running"}
+
 
 @app.post("/compute")
 async def compute(data: SliderData):
@@ -60,16 +63,21 @@ async def compute(data: SliderData):
 
         response = eigenvalues * true_signal + noise
 
-        alg = es.Landweber(design, response, learning_rate=1, true_signal=true_signal, true_noise_level=true_noise_level)
+        alg = es.Landweber(
+            design, response, learning_rate=1, true_signal=true_signal, true_noise_level=true_noise_level
+        )
 
         # Initialize Landweber class
         critical_value = sample_size * true_noise_level**2
         discrepancy_time = alg.get_discrepancy_stop(critical_value, 3000)
+        residuals = alg.residuals
 
         result = discrepancy_time
 
+        # Convert numpy array to list for JSON serialization
+        residuals_list = residuals.tolist() if isinstance(residuals, np.ndarray) else []
 
-        return {"original": data.value, "computed": result}
+        return {"original": data.value, "computed": result, "residuals": residuals_list}
     except Exception as e:
         error_details = traceback.format_exc()
         logger.error(f"Unhandled exception: {str(e)}\n{error_details}")
